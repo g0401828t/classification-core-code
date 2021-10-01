@@ -2,7 +2,7 @@ from __future__ import print_function, division
 import time
 from torch.nn.modules.module import T
 from tqdm import tqdm
-import datetime
+from datetime import datetime
 import copy
 import os
 import argparse
@@ -23,124 +23,24 @@ from torchvision.datasets import ImageFolder
 from models import *
 import plotgraph
 
-np.random.seed(0)
-
-parser = argparse.ArgumentParser(description="resnet_teacher")
-parser.add_argument("--model_name", default="vgg16", type=str, help='setting model')
-parser.add_argument("--mode", default="train", type=str, help="setting mode")
-# parser.add_argument("--data_name", default="car", type=str)
-parser.add_argument("--hp_lr", type=float, default=1e-2, help="setting learning rate")
-parser.add_argument("--hp_wd", type=float, default=5e-4, help="setting weight decay")
-parser.add_argument("--hp_bs", type=int, default=128, help="setting batch size")
-parser.add_argument("--hp_ep", type=int, default=200, help="setting epochs")
-parser.add_argument("--hp_opt", type=str, default="sgd", help="setting optimizer")
-parser.add_argument("--hp_sch", type=str, default="cos", help="setting scheduler")
-parser.add_argument("--num_worker", type=int, default=0)
-parser.add_argument("--earlystop", type=int, default=7, help="how many iterations for early stop")
-
-parser.add_argument("--description", type=str, default="", help="for saving loss, acc graph, and description")
-
-args = parser.parse_args()
-
-path = os.getcwd() # os.getcwd = "D:/projects/aifarm", os.path.dirname = "D:/projects" directory name of GoogLeNet
-result_path = path + "/results"
-modelpath = path + "/models"
-if not os.path.exists(result_path):  # make path to save results (loss graph, acc graph)
-      os.mkdir(result_path)
-if not os.path.exists(modelpath):  # make path to save model.h (best model during training)
-      os.mkdir(modelpath)
-modelpath = modelpath + "/" + args.model_name + args.description + ".h"  # [modelpath].h <= model name to save. (ex. vggnet16_augmented.h)
-
-"""
-# read private_arguments
-f = open("../p_command_multi/private_arguments.txt", "r")
-lines = f.readlines()
-for line in lines:
-    line = line.strip()  # 줄 끝의 줄 바꿈 문자를 제거한다.
-    line_split = line.split(" ")
-    locals()[line_split[0][2:]] = int(line_split[1])
-f.close()
-"""
-
 
 ## dataset & dataloader
+class MyLazyDataset():
+    def __init__(self, dataset, transform=None):
+        self.dataset = dataset
+        self.transform = transform
 
-transform_aug = transforms.Compose(
-    [
-        transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
-        transforms.RandomRotation(degrees=15),
-        transforms.ColorJitter(),
-        transforms.RandomHorizontalFlip(),
-        transforms.CenterCrop(size=224),  # Image net standards
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ]
-)
+    def __getitem__(self, index):
 
-transform = transforms.Compose(
-    [
-        transforms.Resize(size=256),
-        transforms.CenterCrop(size=224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-    ]
-)
-
-dataset1 = ImageFolder("../dataset/tomato/Tomato_all")
-dataset = ImageFolder("../dataset/tomato/Tomato_all", transform=transform)
-pdb.set_trace()
-
-# Shuffle the indices
-len_dataset = len(dataset)
-len_train = int(len_dataset * 0.7)
-len_val = int(len_dataset * 0.15)
-len_test = int(len_dataset * 0.15)
-
-print(len_dataset)
-
-indices = np.arange(0, len_dataset)
-np.random.shuffle(indices)  # shuffle the indicies
-
-train_loader = torch.utils.data.DataLoader(
-    dataset,
-    batch_size=args.hp_bs,
-    shuffle=False,
-    num_workers=args.num_worker,
-    sampler=torch.utils.data.SubsetRandomSampler(indices[:len_train]),
-)
-val_loader = torch.utils.data.DataLoader(
-    dataset,
-    batch_size=args.hp_bs,
-    shuffle=False,
-    num_workers=args.num_worker,
-    sampler=torch.utils.data.SubsetRandomSampler(indices[len_train:len_train+len_val]),
-)
-test_loader = torch.utils.data.DataLoader(
-    dataset,
-    batch_size=args.hp_bs,
-    shuffle=False,
-    num_workers=args.num_worker,
-    sampler=torch.utils.data.SubsetRandomSampler(indices[len_train+len_val:len_train+len_val+len_train]),
-)
-
-## show dataset
-"""
-import matplotlib.pyplot as plt
-def imshow(img):
-    img = img /2 + 0.5
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
-dataiter = iter(train_loader)
-images, labels = dataiter.next()
-
-classes = ('Tomato_D01', 'Tomato_D02', 'Tomato_D03', 'Tomato_D04', 'Tomato_D05', 'Tomato_D06', 'Tomato_D07', 'Tomato_D08', 'Tomato_D09', 'Tomato_H', 'Tomato_P01', 'Tomato_P02', 'Tomato_P03', 'Tomato_P04', 'Tomato_P05', 'Tomato_R01')
-imshow(torchvision.utils.make_grid(images))
-print("".join("%Ss" % classes[labels[j]] for j in range(4)))
-
-"""
-
-
+        if self.transform:
+            self.x = self.transform(self.dataset[index][0])
+        else:
+            self.x = self.dataset[index][0]
+        self.y = self.dataset[index][1]
+        return self.x, self.y
+    
+    def __len__(self):
+        return len(self.dataset)
 
 ## Training
 def train(model, criterion, optimizer, scheduler, num_epochs):
@@ -168,7 +68,7 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             loss.backward()
             optimizer.step()
 
-            avg_loss += loss/len_train  # calculate average loss per epoch
+            avg_loss += loss/len(train_data)  # calculate average loss per epoch
         
         ### validation
         model.eval()
@@ -179,10 +79,10 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
                 prediction = model(x)
 
                 # calculate validation Loss
-                val_loss += criterion(prediction, y) / len_val
+                val_loss += criterion(prediction, y) / len(val_data)
 
                 # calculate validation Accuracy
-                val_acc += (prediction.max(1)[1] == y).sum().item() * 100 / len_val
+                val_acc += (prediction.max(1)[1] == y).sum().item() * 100 / len(val_data)
 
         print(datetime.now().time().replace(microsecond=0), "EPOCHS: [{}], current_lr: [{}], avg_loss: [{:.4f}], val_loss: [{:.4f}], val_acc: [{:.2f}%]".format(
                 epoch+1, current_lr, avg_loss.item(), val_loss.item(), val_acc))
@@ -238,7 +138,7 @@ def test():
 
             # prediction
             prediction = model(x)
-            test_acc += (prediction.max(1)[1] == y).sum().item() * 100 / len_test
+            test_acc += (prediction.max(1)[1] == y).sum().item() * 100 / len(test_data)
 
     print("Acc: [{:.2f}%]".format(
         test_acc
@@ -247,6 +147,117 @@ def test():
 
 if __name__ == "__main__":
     
+    np.random.seed(0)
+
+    parser = argparse.ArgumentParser(description="resnet_teacher")
+    parser.add_argument("--model_name", default="vgg16", type=str, help='setting model')
+    parser.add_argument("--mode", default="train", type=str, help="setting mode")
+    # parser.add_argument("--data_name", default="car", type=str)
+    parser.add_argument("--hp_lr", type=float, default=1e-2, help="setting learning rate")
+    parser.add_argument("--hp_wd", type=float, default=5e-4, help="setting weight decay")
+    parser.add_argument("--hp_bs", type=int, default=128, help="setting batch size")
+    parser.add_argument("--hp_ep", type=int, default=200, help="setting epochs")
+
+    parser.add_argument("--hp_loss", type=str, default="ce", help="setting scheduler")
+    parser.add_argument("--hp_opt", type=str, default="sgd", help="setting optimizer")
+    parser.add_argument("--hp_sch", type=str, default="cos", help="setting scheduler")
+
+    parser.add_argument("--num_worker", type=int, default=0)
+    parser.add_argument("--earlystop", type=int, default=7, help="how many iterations for early stop")
+
+    parser.add_argument("--description", type=str, default="", help="for saving loss, acc graph, and description")
+
+    args = parser.parse_args()
+
+    path = os.getcwd() # os.getcwd = "D:/projects/aifarm", os.path.dirname = "D:/projects" directory name of GoogLeNet
+    result_path = path + "/results"
+    modelpath = path + "/models"
+    if not os.path.exists(result_path):  # make path to save results (loss graph, acc graph)
+        os.mkdir(result_path)
+    if not os.path.exists(modelpath):  # make path to save model.h (best model during training)
+        os.mkdir(modelpath)
+    modelpath = modelpath + "/" + args.model_name + args.description + ".h"  # [modelpath].h <= model name to save. (ex. vggnet16_augmented.h)
+
+    """
+    # read private_arguments
+    f = open("../p_command_multi/private_arguments.txt", "r")
+    lines = f.readlines()
+    for line in lines:
+        line = line.strip()  # 줄 끝의 줄 바꿈 문자를 제거한다.
+        line_split = line.split(" ")
+        locals()[line_split[0][2:]] = int(line_split[1])
+    f.close()
+    """
+
+
+
+    ## dataset & dataloader
+    norm_mean = [0.485, 0.456, 0.406]
+    norm_std = [0.229, 0.224, 0.225]
+    transform = {
+        'train': transforms.Compose([
+            transforms.Resize((600,600)),
+            transforms.RandomHorizontalFlip(p=0.5),
+            torchvision.transforms.RandomCrop((448,448)),
+            transforms.ToTensor(),
+            transforms.Normalize(norm_mean, norm_std),
+        ]),
+        
+        'val': transforms.Compose([
+            transforms.Resize((448,448)),
+            transforms.ToTensor(),
+            transforms.Normalize(norm_mean, norm_std),
+        ]),
+    }
+
+    data_dir = "../dataset/tomato/Tomato_all"
+    dataset = ImageFolder(data_dir)
+    ratio = 0.8
+    lengths = [int(len(dataset)*ratio), int(len(dataset)*(1-ratio)/2), len(dataset)-int(len(dataset)*(ratio))-int(len(dataset)*(1-ratio)/2)]
+    train_set, val_set, test_set = torch.utils.data.random_split(dataset, lengths)
+    train_data = MyLazyDataset(train_set, transform['train'])
+    val_data = MyLazyDataset(val_set, transform['val'])
+    test_data = MyLazyDataset(test_set, transform['val'])
+
+    train_loader = torch.utils.data.DataLoader(
+        train_data,
+        batch_size=args.hp_bs,
+        shuffle=True,
+        num_workers=args.num_worker,
+        pin_memory=True,
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_data,
+        batch_size=args.hp_bs,
+        shuffle=False,
+        num_workers=args.num_worker,
+        pin_memory=True,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_data,
+        batch_size=args.hp_bs,
+        shuffle=False,
+        num_workers=args.num_worker,
+        pin_memory=True,
+    )
+
+    ## show dataset
+    """
+    import matplotlib.pyplot as plt
+    def imshow(img):
+        img = img /2 + 0.5
+        npimg = img.numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.show()
+    dataiter = iter(train_loader)
+    images, labels = dataiter.next()
+
+    classes = ('Tomato_D01', 'Tomato_D02', 'Tomato_D03', 'Tomato_D04', 'Tomato_D05', 'Tomato_D06', 'Tomato_D07', 'Tomato_D08', 'Tomato_D09', 'Tomato_H', 'Tomato_P01', 'Tomato_P02', 'Tomato_P03', 'Tomato_P04', 'Tomato_P05', 'Tomato_R01')
+    imshow(torchvision.utils.make_grid(images))
+    print("".join("%Ss" % classes[labels[j]] for j in range(4)))
+
+    """
+    
 
     ## Model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -254,7 +265,11 @@ if __name__ == "__main__":
     model.to(device)
 
     ## Loss function
-    criterion = nn.CrossEntropyLoss()
+    if args.hp_loss == "ce":
+        criterion = nn.CrossEntropyLoss()
+    if args.hp_loss == "my_loss":
+        criterion = nn.CrossEntropyLoss()
+
 
     ## Optimizer
     if args.hp_opt == "sgd":
@@ -281,11 +296,12 @@ if __name__ == "__main__":
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="min", patience=5, factor=0.5)
     
     
-    
-    if args.mode == "train":
-        ### train
-        train(model=model, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=args.hp_ep)
-        ### test
-        test()
-    elif args.mode =="test":
-        test()
+
+    # ## MainProcess (training & testing)
+    # if args.mode == "train":
+    #     ### train
+    #     train(model=model, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=args.hp_ep)
+    #     ### test
+    #     test()
+    # elif args.mode =="test":
+    #     test()
