@@ -17,12 +17,12 @@ class command():
 command_list = [
 ###
 
+"python main.py --model_name vgg16 --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 8",
+"python main.py --model_name vgg16 --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 12",
+"python main.py --model_name vgg16 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 8",
+"python main.py --model_name vgg16 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 12",
 # "python main.py --model_name resnet34 --mode train --hp_bs 128 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu",
 # "python main.py --model_name timm_vit_small_patch16_224 --mode train --hp_bs 10 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu",
-"python main.py --model_name vgg16 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8",
-"python main.py --model_name vgg16 --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 4",
-"python main.py --model_name vgg16 --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 1",
-"python main.py --model_name vgg16 --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 0",
 
 ###
 ]

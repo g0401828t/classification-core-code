@@ -8,6 +8,7 @@ import os
 import argparse
 # from termcolor import colored
 import numpy as np
+import pandas as pd
 import cv2
 import random
 import pdb
@@ -21,8 +22,8 @@ from torchvision import transforms
 from torchvision.datasets import ImageFolder
 
 from models import *
-import plotgraph
-
+from plotgraph import plotgraph
+from customdataset import CustomDataset, CSVDataset
 
 ## dataset & dataloader
 class MyLazyDataset():
@@ -50,12 +51,14 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
     best_acc = 0
     best_loss = float("inf")
     for epoch in range(num_epochs):
+        print("EPOCH: [", epoch, "/", num_epochs, "]")
         avg_loss, val_loss, val_acc = 0, 0, 0
 
         for param_group in optimizer.param_groups:  # to see the learning rate per epoch
             current_lr =  param_group['lr']
 
         for x, y in tqdm(train_loader, leave=True):
+            # iter_time = time.time()
             x, y = x.to(device), y.to(device)
             
             optimizer.zero_grad()
@@ -69,9 +72,11 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             optimizer.step()
 
             avg_loss += loss/len(train_data)  # calculate average loss per epoch
+            # print("Ieration Time:", time.time() - iter_time)
         
         ### validation
         model.eval()
+        print("++++++++Validation in Progress+++++++++")
         with torch.no_grad():
             for x, y in tqdm(val_loader, leave=True):
                 x, y = x.to(device), y.to(device)
@@ -127,6 +132,7 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
     
 ### Test Function
 def test():
+    print("++++++++Testing in Progress+++++++++")
     model.load_state_dict(torch.load(modelpath))
     model.eval()
     test_acc = 0
@@ -151,6 +157,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="resnet_teacher")
     parser.add_argument("--model_name", default="vgg16", type=str, help='setting model')
+    parser.add_argument("--num_classes", default=16, help="num of classes for classification")
     parser.add_argument("--mode", default="train", type=str, help="setting mode")
     # parser.add_argument("--data_name", default="car", type=str)
     parser.add_argument("--hp_lr", type=float, default=1e-2, help="setting learning rate")
@@ -169,6 +176,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Inintialize Directory and paths
     path = os.getcwd() # os.getcwd = "D:/projects/aifarm", os.path.dirname = "D:/projects" directory name of GoogLeNet
     result_path = path + "/results"
     modelpath = path + "/models"
@@ -218,13 +226,31 @@ if __name__ == "__main__":
     train_data = MyLazyDataset(train_set, transform['train'])
     val_data = MyLazyDataset(val_set, transform['val'])
     test_data = MyLazyDataset(test_set, transform['val'])
+    
+    ## for Custom Dataset => same speed as ImageFolder
+    # datapath = "../dataset/tomato/Tomato_all"
+    # train_data = CustomDataset(datapath,transform["train"])
+    # val_data = CustomDataset(datapath,transform["val"]) #test transforms are applied
+    # test_data = CustomDataset(datapath,transform["val"])
+
+    ## for CSVDataset => No improvements..
+    # df = pd.read_csv('../dataset/tomato/tomato_all.csv')
+    # X = df.image_path.values
+    # y = df.target.values
+    # from sklearn.model_selection import train_test_split
+    # (xtrain, xtest, ytrain, ytest) = (train_test_split(X, y, test_size=0.25, random_state=42))
+    # train_data = CSVDataset(xtrain, ytrain, tfms=1)
+    # test_data = CSVDataset(xtest, ytest, tfms=0)
+    # val_data = test_data
+
+
 
     train_loader = torch.utils.data.DataLoader(
         train_data,
         batch_size=args.hp_bs,
         shuffle=True,
         num_workers=args.num_worker,
-        pin_memory=True,
+        # pin_memory=True,
     )
     val_loader = torch.utils.data.DataLoader(
         val_data,
@@ -261,7 +287,7 @@ if __name__ == "__main__":
 
     ## Model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = get_my_model(model_name=args.model_name, num_classes = len(dataset.classes))
+    model = get_my_model(model_name=args.model_name, num_classes = args.num_classes)
     model.to(device)
 
     ## Loss function
@@ -297,11 +323,11 @@ if __name__ == "__main__":
     
     
 
-    # ## MainProcess (training & testing)
-    # if args.mode == "train":
-    #     ### train
-    #     train(model=model, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=args.hp_ep)
-    #     ### test
-    #     test()
-    # elif args.mode =="test":
-    #     test()
+    ## MainProcess (training & testing)
+    if args.mode == "train":
+        ### train
+        train(model=model, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=args.hp_ep)
+        ### test
+        # test()
+    elif args.mode =="test":
+        test()
