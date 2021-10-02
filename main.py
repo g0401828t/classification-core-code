@@ -58,7 +58,7 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             current_lr =  param_group['lr']
 
         for x, y in tqdm(train_loader, leave=True):
-            # iter_time = time.time()
+            iter_time = time.time()
             x, y = x.to(device), y.to(device)
             
             optimizer.zero_grad()
@@ -72,7 +72,9 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             optimizer.step()
 
             avg_loss += loss/len(train_data)  # calculate average loss per epoch
-            # print("Ieration Time:", time.time() - iter_time)
+            print("Ieration Time:", time.time() - iter_time)
+            break
+        break
         
         ### validation
         model.eval()
@@ -250,7 +252,7 @@ if __name__ == "__main__":
         batch_size=args.hp_bs,
         shuffle=True,
         num_workers=args.num_worker,
-        # pin_memory=True,
+        pin_memory=True,
     )
     val_loader = torch.utils.data.DataLoader(
         val_data,
