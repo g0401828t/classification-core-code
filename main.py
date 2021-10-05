@@ -32,7 +32,6 @@ class MyLazyDataset():
         self.transform = transform
 
     def __getitem__(self, index):
-
         if self.transform:
             self.x = self.transform(self.dataset[index][0])
         else:
@@ -58,7 +57,7 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             current_lr =  param_group['lr']
 
         for x, y in tqdm(train_loader, leave=True):
-            iter_time = time.time()
+            # iter_time = time.time()
             x, y = x.to(device), y.to(device)
             
             optimizer.zero_grad()
@@ -72,9 +71,7 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             optimizer.step()
 
             avg_loss += loss/len(train_data)  # calculate average loss per epoch
-            print("Ieration Time:", time.time() - iter_time)
-            break
-        break
+            # print("Ieration Time:", time.time() - iter_time)
         
         ### validation
         model.eval()
@@ -127,30 +124,30 @@ def train(model, criterion, optimizer, scheduler, num_epochs):
             break
 
         # learning rate scheduler per epoch
-        scheduler.step(val_loss)
+        scheduler.step(avg_loss)
 
     print("finished training")
 
     
 ### Test Function
-def test():
-    print("++++++++Testing in Progress+++++++++")
-    model.load_state_dict(torch.load(modelpath))
-    model.eval()
-    test_acc = 0
-    with torch.no_grad():
-        correct = 0
-        total = 0
-        for x, y in tqdm(test_loader, leave=True):
-            x, y = x.to(device), y.to(device)
+# def test():
+#     print("++++++++Testing in Progress+++++++++")
+#     model.load_state_dict(torch.load(modelpath))
+#     model.eval()
+#     test_acc = 0
+#     with torch.no_grad():
+#         correct = 0
+#         total = 0
+#         for x, y in tqdm(test_loader, leave=True):
+#             x, y = x.to(device), y.to(device)
 
-            # prediction
-            prediction = model(x)
-            test_acc += (prediction.max(1)[1] == y).sum().item() * 100 / len(test_data)
+#             # prediction
+#             prediction = model(x)
+#             test_acc += (prediction.max(1)[1] == y).sum().item() * 100 / len(test_data)
 
-    print("Acc: [{:.2f}%]".format(
-        test_acc
-    ))
+#     print("Acc: [{:.2f}%]".format(
+#         test_acc
+#     ))
 
 
 if __name__ == "__main__":
@@ -206,28 +203,36 @@ if __name__ == "__main__":
     norm_std = [0.229, 0.224, 0.225]
     transform = {
         'train': transforms.Compose([
-            transforms.Resize((600,600)),
+            transforms.Resize((256,256)),
             transforms.RandomHorizontalFlip(p=0.5),
-            torchvision.transforms.RandomCrop((448,448)),
+            torchvision.transforms.RandomCrop((224,224)),
             transforms.ToTensor(),
             transforms.Normalize(norm_mean, norm_std),
         ]),
         
         'val': transforms.Compose([
-            transforms.Resize((448,448)),
+            transforms.Resize((224,224)),
             transforms.ToTensor(),
             transforms.Normalize(norm_mean, norm_std),
         ]),
     }
 
-    data_dir = "../dataset/tomato/Tomato_all"
+    # data_dir = "../dataset/tomato/Tomato_all"
+    data_dir = "F:/data/train"
+    # data_dir = "F:/data/Tomato"
     dataset = ImageFolder(data_dir)
     ratio = 0.8
-    lengths = [int(len(dataset)*ratio), int(len(dataset)*(1-ratio)/2), len(dataset)-int(len(dataset)*(ratio))-int(len(dataset)*(1-ratio)/2)]
-    train_set, val_set, test_set = torch.utils.data.random_split(dataset, lengths)
+    ## 1. split data into train:val:test = 8:1:1
+    # lengths = [int(len(dataset)*ratio), int(len(dataset)*(1-ratio)/2), len(dataset)-int(len(dataset)*(ratio))-int(len(dataset)*(1-ratio)/2)]
+    # train_set, val_set, test_set = torch.utils.data.random_split(dataset, lengths)
+    # train_data = MyLazyDataset(train_set, transform['train'])
+    # val_data = MyLazyDataset(val_set, transform['val'])
+    # test_data = MyLazyDataset(test_set, transform['val'])
+    ## 2. split data into train:val
+    lengths = [int(len(dataset)*ratio), len(dataset)-int(len(dataset)*(ratio))]
+    train_set, val_set = torch.utils.data.random_split(dataset, lengths)
     train_data = MyLazyDataset(train_set, transform['train'])
     val_data = MyLazyDataset(val_set, transform['val'])
-    test_data = MyLazyDataset(test_set, transform['val'])
     
     ## for Custom Dataset => same speed as ImageFolder
     # datapath = "../dataset/tomato/Tomato_all"
@@ -261,13 +266,13 @@ if __name__ == "__main__":
         num_workers=args.num_worker,
         pin_memory=True,
     )
-    test_loader = torch.utils.data.DataLoader(
-        test_data,
-        batch_size=args.hp_bs,
-        shuffle=False,
-        num_workers=args.num_worker,
-        pin_memory=True,
-    )
+    # test_loader = torch.utils.data.DataLoader(
+    #     test_data,
+    #     batch_size=args.hp_bs,
+    #     shuffle=False,
+    #     num_workers=args.num_worker,
+    #     pin_memory=True,
+    # )
 
     ## show dataset
     """
@@ -295,8 +300,14 @@ if __name__ == "__main__":
     ## Loss function
     if args.hp_loss == "ce":
         criterion = nn.CrossEntropyLoss()
-    if args.hp_loss == "my_loss":
-        criterion = nn.CrossEntropyLoss()
+    if args.hp_loss == "weighted_ce":
+        # percentage for each classes
+        # [D01: 0, D04: 1, D05: 2, D07: 3, D08: 4, D09: 5, H: 6, P03: 7, P05: 8, R01: 9]
+        # [D01: 0.013, D04: 0.044, D05: 0.119, D07: 0.005, D08: 0.025, D09: 0.003, H: 0.574, P03: 0.193, P05: 0.008, R01: 0.016]
+        class_percentage = torch.FloatTensor([0.013, 0.044, 0.119, 0.005, 0.025, 0.003, 0.574, 0.193, 0.008, 0.016])
+        class_weights = 1.0 /class_percentage
+        class_weights = class_weights / class_weights.sum()
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
 
 
     ## Optimizer
@@ -308,7 +319,6 @@ if __name__ == "__main__":
     ## Scheduler
     if args.hp_sch == "msl":
         hp_lr_decay_ratio = 0.2
-
         scheduler = lr_scheduler.MultiStepLR(
             optimizer,
             milestones=[
@@ -331,5 +341,5 @@ if __name__ == "__main__":
         train(model=model, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=args.hp_ep)
         ### test
         # test()
-    elif args.mode =="test":
-        test()
+    # elif args.mode =="test":
+        # test()

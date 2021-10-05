@@ -63,15 +63,12 @@ if not os.path.exists(h5file):  # make path to save results (loss graph, acc gra
                 # class_group[cnt:cnt+1:,:,:] = classes
                 image_group.append(img)
                 classes_group.append(classes)
-        
-        
     
         print("n_files", nfiles)
-        img_dt = h5f.create_dataset('images', shape=[nfiles,  IMG_WIDTH, IMG_HEIGHT,3], dtype=int)
-        class_dt = h5f.create_dataset('classes', shape=[nfiles,1], dtype=int)
-        img_dt = image_group
-        class_dt = classes_group
-
+        # img_dt = h5f.create_dataset('images', shape=[nfiles,  IMG_WIDTH, IMG_HEIGHT,3], dtype=int)
+        # class_dt = h5f.create_dataset('classes', shape=[nfiles,1], dtype=int)
+        img_dt = h5f.create_dataset('images', data=image_group, dtype=int)
+        class_dt = h5f.create_dataset('classes', shape=classes_group, dtype=int)
 
 
 file = h5py.File(h5file, 'r')

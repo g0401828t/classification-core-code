@@ -17,17 +17,18 @@ class command():
 command_list = [
 ###
 
-"python main.py --model_name vgg16 --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 10",
-"python main.py --model_name vgg16 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 10",
-"python main.py --model_name vgg16 --mode train --hp_bs 32 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 10",
-"python main.py --model_name vgg16 --mode train --hp_bs 128 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu --num_worker 8 --description 10",
 
+"python main.py --model_name timm_tf_efficientnetv2_m --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
+"python main.py --model_name timm_tf_efficientnetv2_l --mode train --hp_bs 8 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
 
-# "python main.py --model_name resnet34 --mode train --hp_bs 128 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu",
-# "python main.py --model_name resnet34 --mode train --hp_bs 128 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu",
+"python main.py --model_name timm_vit_small_patch16_224 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
+"python main.py --model_name timm_vit_large_patch16_224 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
 
-# "python main.py --model_name timm_vit_small_patch16_224 --mode train --hp_bs 10 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu",
-# "python main.py --model_name timm_vit_small_patch16_224 --mode train --hp_bs 10 --hp_lr 1e-3 --hp_ep 1 --hp_sch plateu",
+"python main.py --model_name timm_mixer_b16_224 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
+"python main.py --model_name timm_mixer_l16_224 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
+
+"python main.py --model_name timm_swin_base_patch4_window7_224 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
+"python main.py --model_name timm_swin_large_patch4_window7_224 --mode train --hp_bs 16 --hp_lr 1e-3 --hp_ep 10 --hp_sch plateu --num_worker 8",
 
 ###
 ]
@@ -75,11 +76,3 @@ for i, c_i in enumerate(c_list):
     with open("log.pkl", "wb") as f:
         pickle.dump(c_list, f)
 
-# # push
-# api_key = "o.EePlquoGSmUa2ktvw92G7OjaVka3Uii3"  # new
-# # api_key = "o.LcPgEyU7O8z2bF0BAQ63pD7VFljwOFVY"
-# pb = Pushbullet(api_key)
-# user = getpass.getuser()
-# push_title = "[" + user + "] Execution ended. Last command was: " + command_list[-1]
-# push_body = str(datetime.datetime.now())
-# push = pb.push_note(push_title, push_body)
