@@ -1,4 +1,1 @@
-# aifarm
-ai connect 경진대회
-
-- input size: 3x1263x1263
+# core_code for image classification
